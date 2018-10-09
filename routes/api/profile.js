@@ -3,6 +3,9 @@ const router = express.Router();
 const mongoose = require("mongoose");
 const passport = require("passport");
 
+// Load validation
+const validateProfileInput = require("../../validation/profile");
+
 // Load Profile Model
 const Profile = require("../../models/Profile");
 // Load User Model
@@ -72,29 +75,33 @@ router.post(
     if (req.body.linkedin) profileFields.social.linkedin = req.body.linkedin;
     if (req.body.instagram) profileFields.social.instagram = req.body.instagram;
 
-    Profile.findOne({ user: req.user.id }).then(profile => {
-      if (profile) {
-        // Update
-        Profile.findOneAndUpdate(
-          { user: req.user.id },
-          { $set: profileFields },
-          { new: true }
-        ).then(profile => res.json(profile));
-      } else {
-        // Create
+    Profile.findOne({ user: req.user.id })
+      .populate("user", ["name", "avatar"])
+      .then(profile => {
+        if (profile) {
+          // Update
+          Profile.findOneAndUpdate(
+            { user: req.user.id },
+            { $set: profileFields },
+            { new: true }
+          ).then(profile => res.json(profile));
+        } else {
+          // Create
 
-        // Check if handle exists
-        Profile.findOne({ handle: profileFields.handle }).then(profile => {
-          if (profile) {
-            errors.handle = "That handle already exists";
-            res.status(400).json(errors);
-          }
+          // Check if handle exists
+          Profile.findOne({ handle: profileFields.handle }).then(profile => {
+            if (profile) {
+              errors.handle = "That handle already exists";
+              res.status(400).json(errors);
+            }
 
-          // Save Profile
-          new Profile(profileFields).save().then(profile => res.json(profile));
-        });
-      }
-    });
+            // Save Profile
+            new Profile(profileFields)
+              .save()
+              .then(profile => res.json(profile));
+          });
+        }
+      });
   }
 );
 
